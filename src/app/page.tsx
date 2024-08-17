@@ -1,7 +1,6 @@
 "use client";
 import * as THREE from "three";
 import { Leva, useControls } from "leva";
-
 import sx from "./page.module.scss";
 import { CSSProperties, useRef, useState, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
@@ -11,7 +10,7 @@ import { EffectComposer, Bloom } from "@react-three/postprocessing";
 function Galaxy() {
   const pointsRef = useRef<THREE.Points>(null);
 
-  const numStars = 5000;
+  const numStars = 6000;
   const positions = new Float32Array(numStars * 3);
 
   for (let i = 0; i < numStars; i++) {
@@ -33,7 +32,7 @@ function Galaxy() {
     <Points ref={pointsRef} positions={positions} stride={3}>
       <PointMaterial
         transparent
-        color="#9bb7ff"
+        color="white"
         size={0.015}
         sizeAttenuation={true}
         depthWrite={false}
@@ -47,25 +46,30 @@ function Box(props: { position: [number, number, number] }) {
 
   return (
     <mesh position={props.position} ref={meshRef}>
-      <Text fontSize={1} color="#80dfff">
+      <Text fontSize={1} color="#80dfff" anchorX="center" anchorY="middle">
         M Majid
       </Text>
-      <meshBasicMaterial depthTest={true} />
+      <meshBasicMaterial color="#ffffff" />
     </mesh>
   );
 }
-
-
 
 function CameraControl() {
   const { camera } = useThree();
   const [scrollY, setScrollY] = useState(0);
   const targetPosition = useRef(new THREE.Vector3(0, 0, 0)); // Position to focus on
-
+  
   // Set default zoom properties
   const { zoom } = useControls({
     zoom: { value: 2, min: 1, max: 10, step: 0.1 },
   });
+  useEffect(() => {
+    // Set initial camera position
+    camera.position.set(0, 1, 1); // Adjust to start from above the text
+    camera.lookAt(targetPosition.current);
+    camera.zoom = zoom;
+    camera.updateProjectionMatrix();
+  }, [camera, zoom]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -81,11 +85,11 @@ function CameraControl() {
   useFrame(() => {
     const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
     const scrollFraction = Math.min(scrollY / maxScroll, 1);
-    
+
     // Smoothly interpolate camera position using lerp
     const targetY = 5 - scrollFraction * 10;
     camera.position.y += (targetY - camera.position.y) * 0.1;
-    
+
     // Ensure camera always points at the center or specific object
     camera.lookAt(targetPosition.current);
 
