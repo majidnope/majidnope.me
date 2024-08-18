@@ -1,10 +1,16 @@
 "use client";
 import * as THREE from "three";
 import { Leva, useControls } from "leva";
-import sx from "./page.module.scss";
-import { CSSProperties, useRef, useState, useEffect } from "react";
+import React, { CSSProperties, useRef, useState, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, PointMaterial, Points, Text } from "@react-three/drei";
+import {
+  Environment,
+  OrbitControls,
+  PointMaterial,
+  Points,
+  RoundedBox,
+  Text,
+} from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 
 function Galaxy() {
@@ -58,15 +64,14 @@ function CameraControl() {
   const { camera } = useThree();
   const [scrollY, setScrollY] = useState(0);
   const targetPosition = useRef(new THREE.Vector3(0, 0, 0)); // Position to focus on
-  
-  // Set default zoom properties
+
   const { zoom } = useControls({
     zoom: { value: 2, min: 1, max: 10, step: 0.1 },
   });
+
   useEffect(() => {
-    // Set initial camera position
-    camera.position.set(0, 1, 1); // Adjust to start from above the text
     camera.lookAt(targetPosition.current);
+    camera.position.set(0, 1, 5); // Adjust to start from above the text
     camera.zoom = zoom;
     camera.updateProjectionMatrix();
   }, [camera, zoom]);
@@ -83,23 +88,59 @@ function CameraControl() {
   }, []);
 
   useFrame(() => {
-    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+    const maxScroll =
+      document.documentElement.scrollHeight - window.innerHeight;
     const scrollFraction = Math.min(scrollY / maxScroll, 1);
-
-    // Smoothly interpolate camera position using lerp
-    const targetY = 5 - scrollFraction * 10;
+    const targetY = 10 - scrollFraction * 10;
     camera.position.y += (targetY - camera.position.y) * 0.1;
-
-    // Ensure camera always points at the center or specific object
     camera.lookAt(targetPosition.current);
-
-    // Adjust zoom level
     camera.zoom = zoom;
     camera.updateProjectionMatrix();
   });
 
   return null;
 }
+
+const Button: React.FC<{
+  position?: [number, number, number];
+  onClick?: () => void;
+  children?: string | React.ReactNode;
+}> = ({ position = [0, 0, 0], onClick, children = "Click Me" }) => {
+  const { buttons } = useControls({
+    buttons: [4.8, 1.5, 0.01],
+  });
+  const meshRef = useRef<THREE.Mesh>(null);
+  const [hovered, setHovered] = useState(false);
+  const [active, setActive] = useState(false);
+
+  return (
+    <mesh
+      ref={meshRef}
+      position={position}
+      scale={active ? 1.2 : 1}
+      onClick={(e) => {
+        e.stopPropagation();
+        setActive(!active);
+        if (onClick) onClick();
+      }}
+      onPointerOver={() => setHovered(true)}
+      onPointerOut={() => setHovered(false)}
+    >
+      <RoundedBox smoothness={4} radius={0.3} args={buttons}>
+        <meshStandardMaterial color={"black"} />
+      </RoundedBox>
+      <Text
+        position={[0, 0.01, 0.05]}
+        fontSize={0.1}
+        color="black"
+        anchorX="center"
+        anchorY="middle"
+      >
+        {children}
+      </Text>
+    </mesh>
+  );
+};
 
 export default function Home() {
   const canvasStyle: CSSProperties = {
@@ -111,6 +152,12 @@ export default function Home() {
     zIndex: -1,
     overflow: "hidden",
   };
+
+  const { lightIntensity, luminanceThreshold, luminanceSmoothing } = useControls({
+    lightIntensity: { value: 1.5, min: 0.1, max: 10, step: 0.1 },
+    luminanceThreshold: { value: 0.1, min: 0, max: 1, step: 0.1 },
+    luminanceSmoothing: { value: 0.8, min: 0, max: 1, step: 0.1 },
+  });
 
   return (
     <>
@@ -142,11 +189,12 @@ export default function Home() {
           />
           <Galaxy />
           <Box position={[0, 0, 0]} />
+          {/* <Button position={[0, 0, -0.1]}>Click me</Button> */}
           <EffectComposer>
             <Bloom
-              luminanceThreshold={0.1}
-              luminanceSmoothing={0.8}
-              intensity={0.6}
+              luminanceThreshold={luminanceThreshold}
+              luminanceSmoothing={luminanceSmoothing}
+              intensity={lightIntensity}
             />
           </EffectComposer>
         </Canvas>
